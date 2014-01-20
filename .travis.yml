@@ -1,0 +1,15 @@
+language: node_js
+script: make test
+notifications:
+  email:
+    - engineering@segment.io
+node_js:
+  - "0.10"
+env:
+  global:
+    secure: "o5RKML8Tby66Kf39UrQlbIjrUliZQwDfvk4b5kKPvwgi/fGUByD8DxlRyex2DKcXzAnaqZ44Cmglu70BuRN+qtiE4WLIKA5fqzOjDFIKm7Y7Ta1yJxVxtYdrJo2gYT3afuYwRJ8myBhetszaO8pclTM96kgCXnlTAI87fLg0t4Y="
+before_install: echo "_auth = `printf $AUTH | base64`" > npmrc
+install: npm install --userconfig npmrc --registry https://$AUTH@registry.segment.io --no-strict-ssl --always-auth
+services:
+  - redis
+  - mongodb
