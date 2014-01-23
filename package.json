@@ -1,22 +1,18 @@
 {
-  "name": "s-linkedin-scraper",
+  "name": "crunchbase-api",
   "version": "1.0.0",
-  "repository": "git://github.com/segmentio/linkedin-scraper.git",
-  "description": "A LinkedIn scraper API for node",
+  "description": "A Crunchbase scraper API for node",
   "keywords": [
-    "LinkedIn",
+    "Crunchbase",
     "Scraper",
     "API"
   ],
   "dependencies": {
     "debug": "~0.7.4",
     "defaults": "~1.0.0",
-    "scraper": "git://github.com/ivolo/scraper"
+    "superagent": "0.16.0"
   },
   "devDependencies": {
     "mocha": "~1.15.1"
-  },
-  "publishConfig": {
-    "registry": "https://registry.segment.io"
   }
 }

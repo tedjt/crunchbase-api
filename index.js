@@ -1,263 +1,82 @@
 
-var debug = require('debug')('crunchbase-phantom');
+var debug = require('debug')('crunchbase-api');
 var defaults = require('defaults');
 var Emitter = require('events').EventEmitter;
 var inherit = require('util').inherits;
+var superagent = require('superagent');
+var util = require('util');
 
 /**
- * Expose the `CrunchbaseScraper`.
+ * Expose the `CrunchbaseApi`.
  */
 
-module.exports = CrunchbaseScraper;
+module.exports = CrunchbaseApi;
+
+
+/*
+ *  private constants
+ */
+var API_ENDPOINT = 'http://api.crunchbase.com/v/1';
 
 /**
- * Initialize a `CrunchbaseScraper` instance.
+ * Initialize a `CrunchbaseApi` instance.
  *
- * @param {CrunchbaseScraper} scraper
+ * @param {CrunchbaseApi} api
  */
 
-function CrunchbaseScraper (scraper) {
-  if (!(this instanceof CrunchbaseScraper)) return new CrunchbaseScraper(scraper);
-  this.scraper = scraper;
-  this.loggedIn = false;
+function CrunchbaseApi () {
+  if (!(this instanceof CrunchbaseApi)) return new CrunchbaseApi();
 }
 
 /**
  * Inherit from `Emitter`.
  */
 
-inherit(CrunchbaseScraper, Emitter);
+inherit(CrunchbaseApi, Emitter);
 
 /**
- * Log into Crunchbase.
+ * Sets the Crunchbase api key
  *
- * @param {String} username
- * @param {String} password
- * @param {Function} callback
+ * @param {String} key
  */
-
-CrunchbaseScraper.prototype.login = function (username, password, callback) {
-  var self = this;
-  var url = 'http://www.linkedin.com/home';
-  debug('opening linkedin login page %s', url);
-  this.scraper.readyPage(url, function (err, page) {
-    if (err) return self.error(err, page, callback);
-    debug('opened linkedin login page, submitting login form ..');
-    submitLoginForm(page, username, password, function (err) {
-      if (err) return self.error(err, page, callback);
-      // check the cookies to make sure we're logged in
-      self.scraper.phantom.getCookies(function (cookies) {
-        var filtered = cookies.filter(function (cookie) {
-          return cookie.name === 'li_at'; // li_at is the login cookie
-        });
-        if (filtered.length === 0) { // we're not logged in
-          var err =  new Error('Failed to log into Crunchbase.');
-          debug('failed to log into Crunchbase');
-          self.error(err, page, callback);
-        } else { // we are logged in
-          self.loggedIn = true;
-          self.emit('log in');
-          debug('successfully logged into Crunchbase');
-          callback();
-        }
-      });
-
-    });
-  });
+CrunchbaseApi.prototype.setKey = function (key) {
+  this.apiKey = key;
   return this;
 };
 
-/**
- * Scrapes a Crunchbase person profile by `url`.
- *
- * @param {String} url
- * @param {Function} callback
- */
-
-CrunchbaseScraper.prototype.person = function (url, callback) {
-  if (!this.loggedIn) return callback(new Error('Not loggedin yet.'));
+CrunchbaseApi.prototype.company = function (companyName, callback) {
+  //http://api.crunchbase.com/v/1/search.js?query=instagram&entity=company
+  if (!this.apiKey) return callback(new Error('No API key set'));
+  // let callback functions make a closure over variable.
   var self = this;
-  debug('scraping Crunchbase person profile %s ..', url);
-  this.scraper.readyPage(url, function (err, page) {
-    if (err) return self.error(err, page, callback);
-    debug('scraped Crunchbase person profile');
-    parsePersonProfile(page, function (err, profile) {
-      if (err) return self.error(err, page, callback);
-      if (profile) {
-        debug('parsed Crunchbase person profile');
-        self.emit('person profile', profile);
-      } else {
-        debug('failed to parse Crunchbase person profile');
-      }
-      page.close();
-      callback(null, profile);
-    });
-  });
-};
 
-/**
- * Scrapes a Crunchbase company profile by `url`.
- *
- * @param {String} url
- * @param {Function} callback
- */
+  var companySearchUrl = util.format(
+    '%s/search.js?query=%s&entity=company&api_key=%s',
+    API_ENDPOINT, companyName, self.apiKey);
 
-CrunchbaseScraper.prototype.company = function (url, callback) {
-  if (!this.loggedIn) return callback(new Error('Not loggedin yet.'));
-  var self = this;
-  debug('scraping Crunchbase company profile %s ..', url);
-  this.scraper.readyPage(url, function (err, page) {
-    if (err) return self.error(err, page, callback);
-    debug('scraped Crunchbase company profile');
-    parseCompanyProfile(page, function (err, profile) {
-      if (err) return self.error(err, page, callback);
-      if (profile) {
-        debug('parsed Crunchbase company profile');
-        self.emit('company profile', profile);
-      } else {
-        debug('failed to parse Crunchbase company profile');
-      }
-      page.close();
-      callback(null, profile);
-    });
-  });
-};
+  debug('api searching for company named: %s', companyName);
+  superagent.get(companySearchUrl).end(function(err, res) {
+    if (err) return callback(err);
+    var searchJson, firstResult, companyDataUrl;
+    searchJson = JSON.parse(res.text);
+    firstResult = searchJson.results[0];
+    if (firstResult) {
+      debug('api found matching Crunchbase company profile: %s',
+        firstResult.permalink);
+      companyDataUrl = util.format('%s/company/%s.js?api_key=%s',
+        API_ENDPOINT, firstResult.permalink, self.apiKey);
 
-/**
- * Emits and returns an `err` to `callback`, and closes the `page`.
- *
- * @param {Error} err
- * @param {Function} callback
- */
-
-CrunchbaseScraper.prototype.error = function (err, page, callback) {
-  if (page) page.close();
-  if (err) {
-    this.emit('error', err);
-    if (callback) callback(err);
-  }
-};
-
-/**
- * Submits the Crunchbase login page
- *
- * @param {Page} page
- * @param {String} username
- * @param {String} password
- * @param {Function} callback
- */
-
-function submitLoginForm (page, username, password, callback) {
-
-  page.evaluate(
-    function (username, password) {
-      // if you're already logged in, the body class won't contain guest anymore
-      if (!document.body.classList.contains('guest')) return 'success';
-
-      var form        = document.getElementById('login');
-      var usernameBox = document.getElementById('session_key-login');
-      var passwordBox = document.getElementById('session_password-login');
-
-      if (!form) return 'Crunchbase form element not found.';
-      if (!usernameBox) return 'Crunchbase username textbox not found.';
-      if (!passwordBox) return 'Crunchbase password textbox not found.';
-
-      usernameBox.value = username;
-      passwordBox.value = password;
-
-      form.submit();
-
-      return 'success';
-    },
-
-    function (status) {
-      var err = null;
-      if (status !== 'success') err = new Error(status);
-      setTimeout(function () { return callback(err); }, 3000);
-    },
-
-    username, password);
-}
-
-/**
- * Parses the Crunchbase person profile.
- *
- * @param {Page} page
- * @param {Function} callback
- */
-
-function parsePersonProfile (page, callback) {
-
-  page.evaluate(function () {
-
-    var data = {
-      name        : $('.full-name').text(),
-      headline    : $('#headline .title').text(),
-      summary     : $('.background-summary .summary .description').text(),
-      location    : $('.locality').find('a').first().text(),
-      industry    : $('.industry').find('a').first().text(),
-      education   : $('#overview-summary-education').find('a').last().text(),
-      connections : parseInt($('.member-connections').find('strong').text().replace(',', ''), 10),
-      experiences : []
-    };
-
-    var experienceDivs = $('#background-experience').children().find('div');
-
-    experienceDivs.each(function (i, experienceDiv) {
-
-      experienceDiv = $(experienceDiv);
-
-      var experience = {
-        //title: experienceDiv.find('[name]="title"').text(),
-        description: experienceDiv.find('.description').text(),
-        company: {
-          name: experienceDiv.find('.miniprofile-container').find('a').text(),
-          url : experienceDiv.find('.miniprofile-container').find('a').attr('href')
+      superagent.get(companyDataUrl).end(function(err, res) {
+        if (err) return callback(err);
+        var companyJson = JSON.parse(res.text);
+        if (companyJson) {
+          debug('parsed Crunchbase company profile');
+          self.emit('company profile', companyJson);
+        } else {
+          debug('failed to parse Crunchbase company profile');
         }
-      };
-
-      var times = experienceDiv.find('.experience-date-locale').find('time');
-      if (times.length === 3) {
-        experience.start = $(times[0]).text().replace(' – ', '');
-        experience.end = $(times[1]).text().replace(' – ', '');
-        experience.duration = $(times[2]).text();
-      }
-
-      data.experiences.push(experience);
-    });
-
-    return data;
-
-  }, function (data) {
-    return callback(null, data);
+        callback(null, companyJson);
+      });
+    }
   });
-}
-
-/**
- * Parses the Crunchbase company profile.
- *
- * @param {Page} page
- * @param {Function} callback
- */
-
-function parseCompanyProfile (page, callback) {
-
-  page.evaluate(function () {
-
-    var data = {
-      name        : $('.header .name').text().trim(),
-      logoUrl     : $('.header .image-wrapper .image').attr('src'),
-      website     : $('.basic-info .website a').text(),
-      description : $('.about-def .description p').text(),
-      industry    : $('.industry p').text(),
-      type        : $('.type p').text().trim(),
-      size        : $('.company-size p').text().trim(),
-      employees   : parseInt($('.how-connected .stats li').last().find('a').text().replace(',', ''), 10)
-    };
-
-    return data;
-
-  }, function (data) {
-    return callback(null, data);
-  });
-}
+};

@@ -1,32 +1,28 @@
 
 # crunchbase-scraper
 
-  A Crunchbase [scraper](https://github.com/segmentio/scraper) to get profile and company information.
+  A Crunchbase api to get profile and company information.
 
 ## Example
 
-  Get a company profile by url:
+  Get a company profile by name:
 
 ```js
-var Scraper = require('scraper');
-var Crunchbase = require('crunchbase-scraper');
+var Crunchbase = require('crunchbase-api');
 
-Scraper(function (err, scraper) {
-  var crunchbase = new Crunchbase(scraper);
-  crunchbase.login('username', 'password', function (err) {
-    crunchbase.company('http://www.crunchbase.com/company/segment-io', function (err, person) {
-      // read the `company` profile
-    });
-  });
+var crunchbase = new Crunchbase();
+crunchbase.setKey(apiKey);
+crunchbase.company('segment.io', function(err, company) {
+  // do something with company json 
 });
 ```
 
 ## API
 
-#### CrunchbaseScraper(scraper)
+#### CrunchbaseApi()
 
-  Create a new Crunchbase `scraper` instance.
+  Create a new Crunchbase `api` instance.
 
-#### .company(url, [options], callback)
+#### .setKey(apiKey)
 
-  Get a LinkedIn company profile for a given `url`.
+  Set the Crunchbase api key to use.
