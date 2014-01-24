@@ -58,7 +58,12 @@ CrunchbaseApi.prototype.company = function (companyName, callback) {
   superagent.get(companySearchUrl).end(function(err, res) {
     if (err) return callback(err);
     var searchJson, firstResult, companyDataUrl;
-    searchJson = JSON.parse(res.text);
+    try {
+      searchJson = JSON.parse(res.text);
+    } catch (e) {
+      debug('unable to parse crunchbase response: %s', res.text);
+      return callback(e);
+    }
     firstResult = searchJson.results[0];
     if (firstResult) {
       debug('api found matching Crunchbase company profile: %s',
@@ -68,7 +73,13 @@ CrunchbaseApi.prototype.company = function (companyName, callback) {
 
       superagent.get(companyDataUrl).end(function(err, res) {
         if (err) return callback(err);
-        var companyJson = JSON.parse(res.text);
+        var companyJson;
+        try {
+          companyJson = JSON.parse(res.text);
+        } catch (e) {
+          debug('unable to parse crunchbase response: %s', res.text);
+          return callback(e);   
+        }
         if (companyJson) {
           debug('parsed Crunchbase company profile');
           self.emit('company profile', companyJson);
