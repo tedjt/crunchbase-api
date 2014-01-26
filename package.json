@@ -1,7 +1,7 @@
 {
   "name": "crunchbase-api",
   "version": "1.0.0",
-  "description": "A Crunchbase scraper API for node",
+  "description": "A Crunchbase API for node",
   "keywords": [
     "Crunchbase",
     "Scraper",

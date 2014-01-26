@@ -1,28 +1,34 @@
 
-# crunchbase-scraper
+# crunchbase
 
-  A Crunchbase api to get profile and company information.
+  A node API to get CrunchBase company information. Get a Crunchbase API key [here](http://developer.crunchbase.com/).
 
 ## Example
 
   Get a company profile by name:
 
 ```js
-var Crunchbase = require('crunchbase-api');
+var crunchbase = require('crunchbase-api')(apiKey);
 
-var crunchbase = new Crunchbase();
-crunchbase.setKey(apiKey);
 crunchbase.company('segment.io', function(err, company) {
-  // do something with company json 
+  // ..
 });
 ```
 
 ## API
 
-#### CrunchbaseApi()
+#### CrunchBase()
 
-  Create a new Crunchbase `api` instance.
+  Create a new CrunchBase `api` instance.
 
-#### .setKey(apiKey)
+#### .search(name, callback)
 
-  Set the Crunchbase api key to use.
+  Search CrunchBase for companies with `name`.
+
+#### .permalink(permalink, callback)
+
+  Get the company profile by `permalink`.
+
+#### .company(name, callback)
+
+  Search for a company by `name` and get information for the first one.
