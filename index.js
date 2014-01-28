@@ -1,93 +1,83 @@
 
-var debug = require('debug')('crunchbase-api');
+var debug = require('debug')('crunchbase');
 var defaults = require('defaults');
-var Emitter = require('events').EventEmitter;
-var inherit = require('util').inherits;
 var superagent = require('superagent');
 var util = require('util');
 
 /**
- * Expose the `CrunchbaseApi`.
+ * Expose the `CrunchBase`.
  */
 
-module.exports = CrunchbaseApi;
+module.exports = CrunchBase;
 
-
-/*
- *  private constants
+/**
+ * Endpoints.
  */
+
 var API_ENDPOINT = 'http://api.crunchbase.com/v/1';
 
 /**
- * Initialize a `CrunchbaseApi` instance.
+ * Initialize a `CrunchBase` instance.
  *
- * @param {CrunchbaseApi} api
+ * @param {String} apiKey
  */
 
-function CrunchbaseApi () {
-  if (!(this instanceof CrunchbaseApi)) return new CrunchbaseApi();
+function CrunchBase (apiKey) {
+  if (!(this instanceof CrunchBase)) return new CrunchBase(apiKey);
+  if (!apiKey) throw new Error('CrunchBase API key is required.');
+  this.apiKey = apiKey;
 }
 
 /**
- * Inherit from `Emitter`.
- */
-
-inherit(CrunchbaseApi, Emitter);
-
-/**
- * Sets the Crunchbase api key
+ * Get the first company search result for `name`.
  *
- * @param {String} key
+ * @param {String} name
+ * @param {Function} callback
  */
-CrunchbaseApi.prototype.setKey = function (key) {
-  this.apiKey = key;
-  return this;
+
+CrunchBase.prototype.company = function (name, callback) {
+  var self = this;
+  this.search(name, function (err, results) {
+    if (err) return callback(err);
+    if (results.length === 0) return callback();
+    else self.permalink(results[0].permalink, callback);
+  });
 };
 
-CrunchbaseApi.prototype.company = function (companyName, callback) {
-  //http://api.crunchbase.com/v/1/search.js?query=instagram&entity=company
-  if (!this.apiKey) return callback(new Error('No API key set'));
-  // let callback functions make a closure over variable.
-  var self = this;
+/**
+ * Search for companies by the company `name`.
+ *
+ * @param {String} name
+ * @param {Function} callback
+ */
 
-  var companySearchUrl = util.format(
-    '%s/search.js?query=%s&entity=company&api_key=%s',
-    API_ENDPOINT, companyName, self.apiKey);
+CrunchBase.prototype.search = function (name, callback) {
+  debug('searching for %s ..', name);
+  superagent
+    .get(API_ENDPOINT + '/search.js?query=' + name + '&entity=company&api_key=' + this.apiKey)
+    .end(function(err, res) {
+      if (err) return callback(err);
+      var json = JSON.parse(res.text);
+      debug('found %d results for query %s.', json.results.length, name);
+      callback(null, json.results);
+    });
+};
 
-  debug('api searching for company named: %s', companyName);
-  superagent.get(companySearchUrl).end(function(err, res) {
-    if (err) return callback(err);
-    var searchJson, firstResult, companyDataUrl;
-    try {
-      searchJson = JSON.parse(res.text);
-    } catch (e) {
-      debug('unable to parse crunchbase response: %s', res.text);
-      return callback(e);
-    }
-    firstResult = searchJson.results[0];
-    if (firstResult) {
-      debug('api found matching Crunchbase company profile: %s',
-        firstResult.permalink);
-      companyDataUrl = util.format('%s/company/%s.js?api_key=%s',
-        API_ENDPOINT, firstResult.permalink, self.apiKey);
+/**
+ * Get the company by its `permalink`.
+ *
+ * @param {String} permalink
+ * @param {Function} callback
+ */
 
-      superagent.get(companyDataUrl).end(function(err, res) {
-        if (err) return callback(err);
-        var companyJson;
-        try {
-          companyJson = JSON.parse(res.text);
-        } catch (e) {
-          debug('unable to parse crunchbase response: %s', res.text);
-          return callback(e);   
-        }
-        if (companyJson) {
-          debug('parsed Crunchbase company profile');
-          self.emit('company profile', companyJson);
-        } else {
-          debug('failed to parse Crunchbase company profile');
-        }
-        callback(null, companyJson);
-      });
-    }
-  });
+CrunchBase.prototype.permalink = function (permalink, callback) {
+  debug('get company by permalink %s ..', permalink);
+  superagent
+    .get(API_ENDPOINT + '/company/' + permalink + '.js?api_key=' + this.apiKey)
+    .end(function(err, res) {
+      if (err) return callback(err);
+      var json = JSON.parse(res.text);
+      debug('got CrunchBase profile for company %s', json.name);
+      callback(null, json);
+    });
 };
