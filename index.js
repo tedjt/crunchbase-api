@@ -57,9 +57,17 @@ CrunchBase.prototype.search = function (name, callback) {
     .get(API_ENDPOINT + '/search.js?query=' + name + '&entity=company&api_key=' + this.apiKey)
     .end(function(err, res) {
       if (err) return callback(err);
-      var json = JSON.parse(res.text);
-      debug('found %d results for query %s.', json.results.length, name);
-      callback(null, json.results);
+      if (res.type != 'text/javascript') return callback(new Error('Unexpected response type'));
+      var json;
+      var error = null;
+      try {
+        json = JSON.parse(res.text);
+        debug('found %d results for query %s.', json.results.length, name);
+      } except (e) {
+        debug('error parsing json');
+        error = e;
+      }
+      callback(error, json.results);
     });
 };
 
@@ -76,8 +84,15 @@ CrunchBase.prototype.permalink = function (permalink, callback) {
     .get(API_ENDPOINT + '/company/' + permalink + '.js?api_key=' + this.apiKey)
     .end(function(err, res) {
       if (err) return callback(err);
-      var json = JSON.parse(res.text);
-      debug('got CrunchBase profile for company %s', json.name);
-      callback(null, json);
+      var json;
+      var error = null;
+      try {
+        json = JSON.parse(res.text);
+        debug('got CrunchBase profile for company %s', json.name);
+      } except (e) {
+        debug('error parsing json');
+        error = e;
+      }
+      callback(error, json);
     });
 };
