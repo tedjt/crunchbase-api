@@ -61,13 +61,13 @@ CrunchBase.prototype.search = function (name, callback) {
       var json;
       var error = null;
       try {
-        json = JSON.parse(res.text);
-        debug('found %d results for query %s.', json.results.length, name);
-      } except (e) {
+        json = JSON.parse(res.text).results;
+        debug('found %d results for query %s.', json.length, name);
+      } catch (e) {
         debug('error parsing json');
         error = e;
       }
-      callback(error, json.results);
+      callback(error, json);
     });
 };
 
@@ -89,7 +89,7 @@ CrunchBase.prototype.permalink = function (permalink, callback) {
       try {
         json = JSON.parse(res.text);
         debug('got CrunchBase profile for company %s', json.name);
-      } except (e) {
+      } catch (e) {
         debug('error parsing json');
         error = e;
       }
