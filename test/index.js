@@ -10,4 +10,12 @@ describe('crunchbase', function () {
       done();
     });
   });
+
+  it('should be able to pull a company profile for sensor tower', function (done) {
+    crunchbase.company('sensortower.com', function (err, company) {
+      if (err) return done(err);
+      assert(company.crunchbase_url === 'http://www.crunchbase.com/company/sensor-tower');
+      done();
+    });
+  });
 });

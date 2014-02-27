@@ -62,6 +62,9 @@ CrunchBase.prototype.search = function (name, callback) {
       var error = null;
       try {
         json = JSON.parse(res.text).results;
+        json = json.filter(function(e) {
+          return e.namespace === 'company';
+        });
         debug('found %d results for query %s.', json.length, name);
       } catch (e) {
         debug('error parsing json');
