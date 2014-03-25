@@ -52,9 +52,10 @@ CrunchBase.prototype.company = function (name, callback) {
  */
 
 CrunchBase.prototype.search = function (name, callback) {
-  debug('searching for %s ..', name);
+  var encodedName = encodeURIComponent(name);
+  debug('searching for %s ..', encodedName);
   superagent
-    .get(API_ENDPOINT + '/search.js?query=' + name + '&entity=company&api_key=' + this.apiKey)
+    .get(API_ENDPOINT + '/search.js?query=' + encodedName + '&entity=company&api_key=' + this.apiKey)
     .end(function(err, res) {
       if (err) return callback(err);
       if (res.type != 'text/javascript') return callback(new Error('Unexpected response type'));
@@ -65,7 +66,7 @@ CrunchBase.prototype.search = function (name, callback) {
         json = json.filter(function(e) {
           return e.namespace === 'company';
         });
-        debug('found %d results for query %s.', json.length, name);
+        debug('found %d results for query %s.', json.length, encodedName);
       } catch (e) {
         debug('error parsing json');
         error = e;
