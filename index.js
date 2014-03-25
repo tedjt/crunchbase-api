@@ -83,9 +83,10 @@ CrunchBase.prototype.search = function (name, callback) {
  */
 
 CrunchBase.prototype.permalink = function (permalink, callback) {
-  debug('get company by permalink %s ..', permalink);
+  var encodedPermaLink = encodeURIComponent(permalink);
+  debug('get company by permalink %s ..', encodedPermaLink);
   superagent
-    .get(API_ENDPOINT + '/company/' + permalink + '.js?api_key=' + this.apiKey)
+    .get(API_ENDPOINT + '/company/' + encodedPermaLink + '.js?api_key=' + this.apiKey)
     .end(function(err, res) {
       if (err) return callback(err);
       var json;
