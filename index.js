@@ -1,6 +1,7 @@
 
 var debug = require('debug')('crunchbase');
 var defaults = require('defaults');
+var Levenshtein = require('levenshtein');
 var superagent = require('superagent');
 var util = require('util');
 
@@ -40,7 +41,12 @@ CrunchBase.prototype.company = function (name, callback) {
   this.search(name, function (err, results) {
     if (err) return callback(err);
     if (results.length === 0) return callback();
-    else self.permalink(results[0].permalink, callback);
+    else {
+      var result = results.slice(0, 3).sort(function(a, b) {
+        return (new Levenshtein(a.name, name)).distance - (new Levenshtein(b.name, name)).distance;
+      })[0];
+      self.permalink(result.permalink, result.namespace, callback);
+    }
   });
 };
 
@@ -64,7 +70,7 @@ CrunchBase.prototype.search = function (name, callback) {
       try {
         json = JSON.parse(res.text).results;
         json = json.filter(function(e) {
-          return e.namespace === 'company';
+          return e.namespace === 'company' || e.namespace === 'financial-organization';
         });
         debug('found %d results for query %s.', json.length, encodedName);
       } catch (e) {
@@ -82,11 +88,15 @@ CrunchBase.prototype.search = function (name, callback) {
  * @param {Function} callback
  */
 
-CrunchBase.prototype.permalink = function (permalink, callback) {
+CrunchBase.prototype.permalink = function (permalink, namespace, callback) {
+  if ('function' === typeof namespace) {
+    callback = namespace;
+    namespace = 'company';
+  }
   var encodedPermaLink = encodeURIComponent(permalink);
   debug('get company by permalink %s ..', encodedPermaLink);
   superagent
-    .get(API_ENDPOINT + '/company/' + encodedPermaLink + '.js?api_key=' + this.apiKey)
+    .get(API_ENDPOINT + '/' + namespace + '/' + encodedPermaLink + '.js?api_key=' + this.apiKey)
     .end(function(err, res) {
       if (err) return callback(err);
       var json;
