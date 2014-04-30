@@ -37,10 +37,20 @@ describe('crunchbase', function () {
     });
   });
 
-  it('should be able to pull a company profile', function (done) {
+  it('should be able to pull a financial profile', function (done) {
     crunchbase.company('Khosla Ventures', function (err, company) {
       if (err) return done(err);
       company.crunchbase_url.should.equal('http://www.crunchbase.com/financial-organization/khosla-ventures');
+      done();
+    });
+  });
+
+  it('should able to filter operator.com', function (done) {
+    crunchbase.company('operator.com', true, function (err, company) {
+      if (err) return done(err);
+      console.log(company);
+      // this is wrong - we rely on leader-crunchbase-api to do some level of filtering
+      (company.crunchbase_url).should.eql('http://www.crunchbase.com/company/operation-sports');
       done();
     });
   });

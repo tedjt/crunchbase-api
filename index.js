@@ -1,9 +1,10 @@
 
 var debug = require('debug')('crunchbase');
 var defaults = require('defaults');
-var Levenshtein = require('levenshtein');
+var natural = require('natural');
 var superagent = require('superagent');
 var util = require('util');
+var leaderUtils = require('leader-utils');
 
 /**
  * Expose the `CrunchBase`.
@@ -36,14 +37,36 @@ function CrunchBase (apiKey) {
  * @param {Function} callback
  */
 
-CrunchBase.prototype.company = function (name, callback) {
+CrunchBase.prototype.company = function (name, isDomain, callback) {
+  if (typeof isDomain == 'function') {
+    callback = isDomain;
+    isDomain = false;
+  }
   var self = this;
   this.search(name, function (err, results) {
     if (err) return callback(err);
     if (results.length === 0) return callback();
     else {
-      var result = results.slice(0, 3).sort(function(a, b) {
-        return (new Levenshtein(a.name, name)).distance - (new Levenshtein(b.name, name)).distance;
+      if (isDomain) {
+        console.log(results);
+        // scan for one that matches the domain
+        var domainMatchResult = null;
+        for (var i = 0; i < results.length; i++) {
+          if (name === leaderUtils.getCleanDomain(results[i].homepage_url)) {
+            // return early
+            return self.permalink(results[i].permalink, results[i].namespace, callback);
+          }
+        }
+      }
+      // TODO(ted) - we should consider requiring that domain searches have an exact
+      // match with company domain...
+      // otherwise just search for closest match by name ...
+      var distances = {};
+      results.forEach(function(r) {
+        distances[r.name] = natural.JaroWinklerDistance(r.name, name);
+      });
+      var result = results.sort(function(a, b) {
+        return distances[b.name] - distances[a.name];
       })[0];
       self.permalink(result.permalink, result.namespace, callback);
     }

@@ -11,8 +11,9 @@
   "dependencies": {
     "debug": "~0.7.4",
     "defaults": "~1.0.0",
-    "superagent": "0.16.0",
-    "levenshtein": "~1.0.4"
+    "natural": "^0.1.27",
+    "leader-utils": "git://github.com/tedjt/leader-utils",
+    "superagent": "0.16.0"
   },
   "devDependencies": {
     "mocha": "~1.15.1",
